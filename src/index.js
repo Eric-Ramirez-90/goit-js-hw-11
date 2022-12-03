@@ -5,7 +5,32 @@ import axios from 'axios';
 const refs = {
   form: document.querySelector('#search-form'),
   divGallery: document.querySelector('.gallery'),
+  guard: document.querySelector('.js-guard'),
 };
+
+let page = 0;
+
+const options = {
+  root: null,
+  rootMargin: '200px',
+  threshold: 1.0,
+};
+
+const observer = new IntersectionObserver(onLoad, options);
+
+function onLoad(entries, observer) {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      page += 1;
+      getImages().then(({ data }) => {
+        refs.divGallery.insertAdjacentHTML(
+          'beforeend',
+          createMarkup(data.hits)
+        );
+      });
+    }
+  });
+}
 
 const BASE_URL = 'https://pixabay.com/api/';
 const API_KEY = '31766486-572375a92de9bb4d66deb6c09';
@@ -32,21 +57,20 @@ function onFormSubmit(evt) {
     // clearGalleryList();
     Notify.success(`Hooray! We found ${data.totalHits} images.`);
     refs.divGallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
+    observer.observe(refs.guard);
   });
+}
 
-  async function getImages(inputValue) {
-    let page = 1;
-    try {
-      const response = await axios.get(
-        `${BASE_URL}?key=${API_KEY}&q=${inputValue}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`
-      );
-      const { data, totalHits } = response;
+async function getImages(inputValue, page = 1) {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}?key=${API_KEY}&q=${inputValue}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`
+    );
+    const { data } = response;
 
-      page += 1;
-      return { data, totalHits };
-    } catch (error) {
-      console.error(error);
-    }
+    return { data };
+  } catch (error) {
+    console.error(error);
   }
 }
 
