@@ -30,8 +30,13 @@ function onFormSubmit(evt) {
 
   searchQuery = evt.currentTarget.elements.searchQuery.value.trim();
 
+  resetPage();
+
   if (!searchQuery) {
     clearGalleryList();
+    Notify.failure(
+      'Sorry, there are no images matching your search query. Please try again.'
+    );
     return;
   }
 
@@ -44,15 +49,10 @@ function onFormSubmit(evt) {
       return;
     }
 
-    totalImages += data.hits.length;
-    if (totalImages > data.totalHits) {
-      Notify.failure(
-        "We're sorry, but you've reached the end of search results."
-      );
-      return;
-    }
+    clearGalleryList();
     Notify.success(`Hooray! We found ${data.totalHits} images.`);
     refs.divGallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
+    console.log(data);
     observer.observe(refs.guard);
   });
 }
@@ -60,7 +60,7 @@ function onFormSubmit(evt) {
 async function getImages(searchQuery, page = 1) {
   try {
     const response = await axios.get(
-      `${BASE_URL}?key=${API_KEY}&q=${searchQuery}&page=${page}&per_page=200&image_type=photo&orientation=horizontal&safesearch=true`
+      `${BASE_URL}?key=${API_KEY}&q=${searchQuery}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`
     );
     const { data } = response;
 
@@ -106,16 +106,32 @@ function onLoad(entries, observer) {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
       page += 1;
-      getImages(searchQuery, page).then(({ data }) => {
-        refs.divGallery.insertAdjacentHTML(
-          'beforeend',
-          createMarkup(data.hits)
-        );
-      });
+      getImages(searchQuery, page)
+        .then(({ data }) => {
+          refs.divGallery.insertAdjacentHTML(
+            'beforeend',
+            createMarkup(data.hits)
+          );
+
+          totalImages += data.hits.length;
+          if (totalImages >= data.totalHits) {
+            console.log(totalImages);
+          }
+        })
+        .catch(error => {
+          Notify.failure(
+            `We're sorry, but you've reached the end of search results.`
+          );
+          observer.unobserve(refs.guard);
+        });
     }
   });
 }
 
 function clearGalleryList() {
   refs.divGallery.innerHTML = '';
+}
+
+function resetPage() {
+  page = 1;
 }
