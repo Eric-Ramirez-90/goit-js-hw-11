@@ -1,5 +1,7 @@
 import './css/styles.css';
 import { Notify } from 'notiflix/build/notiflix-notify-aio';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
 import axios from 'axios';
 
 const refs = {
@@ -7,6 +9,8 @@ const refs = {
   divGallery: document.querySelector('.gallery'),
   guard: document.querySelector('.js-guard'),
 };
+
+const simpleligthbox = new SimpleLightbox('.gallery a', { loop: false });
 
 let page = 1;
 let searchQuery = '';
@@ -52,22 +56,17 @@ function onFormSubmit(evt) {
     clearGalleryList();
     Notify.success(`Hooray! We found ${data.totalHits} images.`);
     refs.divGallery.insertAdjacentHTML('beforeend', createMarkup(data.hits));
-    console.log(data);
     observer.observe(refs.guard);
   });
 }
 
 async function getImages(searchQuery, page = 1) {
-  try {
-    const response = await axios.get(
-      `${BASE_URL}?key=${API_KEY}&q=${searchQuery}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`
-    );
-    const { data } = response;
+  const response = await axios.get(
+    `${BASE_URL}?key=${API_KEY}&q=${searchQuery}&page=${page}&per_page=40&image_type=photo&orientation=horizontal&safesearch=true`
+  );
+  const { data } = response;
 
-    return { data };
-  } catch (error) {
-    console.error(error);
-  }
+  return { data };
 }
 
 function createMarkup(arr) {
@@ -75,14 +74,16 @@ function createMarkup(arr) {
     .map(
       ({
         webformatURL,
-        largeImageUR,
+        largeImageURL,
         tags,
         likes,
         views,
         comments,
         downloads,
-      }) => `<div class="photo-card">
-  <img class="card-img" src="${webformatURL}" alt="${tags}" loading="lazy" />
+      }) => `
+      <div class="photo-card">
+      <div class="thumb"><a class="gallery-item" href="${largeImageURL}">
+        <img src="${webformatURL}" alt="${tags}" loading="lazy" /></a></div>
   <div class="info">
     <p class="info-item">
       <b>Likes</b>${likes}
@@ -112,14 +113,10 @@ function onLoad(entries, observer) {
             'beforeend',
             createMarkup(data.hits)
           );
-
-          totalImages += data.hits.length;
-          if (totalImages >= data.totalHits) {
-            console.log(totalImages);
-          }
         })
+        .then(() => simpleligthbox.refresh())
         .catch(error => {
-          Notify.failure(
+          Notify.info(
             `We're sorry, but you've reached the end of search results.`
           );
           observer.unobserve(refs.guard);
